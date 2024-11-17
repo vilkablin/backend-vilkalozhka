@@ -79,6 +79,38 @@ class UserModel
      * @throws UserNotFoundException
      * @throws DatabaseQueryException
      */
+    public function getByUsername(string $username): UserEntity
+    {
+        $database = Application::getInstance()->getDatabase()->getConnection();
+
+        $statement = $database->prepare("SELECT * FROM users WHERE username = :username");
+
+        $statement->bindParam(":username", $username);
+
+        if (!$statement->execute()) {
+            throw new DatabaseQueryException();
+        }
+
+        $result = $statement->fetch(PDO::FETCH_ASSOC);
+
+        if (!is_array($result)) {
+            throw new UserNotFoundException();
+        }
+
+        return new UserEntity(
+            userId: $result["id"],
+            username: $result["username"],
+            email: $result["email"],
+            password: $result["password"],
+            about: $result["about"],
+            photoPath: $result["photo_path"],
+        );
+    }
+
+    /**
+     * @throws UserNotFoundException
+     * @throws DatabaseQueryException
+     */
     public function getUserByUsernameOrEmail(string $username, string $email): UserEntity
     {
         $database = Application::getInstance()->getDatabase()->getConnection();

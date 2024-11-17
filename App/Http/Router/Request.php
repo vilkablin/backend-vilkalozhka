@@ -44,7 +44,7 @@ class Request
         $mapped = [];
 
         if ($this->getMethod() === self::POST) {
-            $mapped = $_POST;
+            $mapped = array_merge($mapped, $_POST, json_decode(file_get_contents('php://input'), true));
         }
 
         return array_merge($mapped, $_FILES);

@@ -35,6 +35,13 @@ class Router
         $this->routes[Request::DELETE][$path] = $handler;
     }
 
+    public function middleware(string $className): void
+    {
+        $middleware = new $className;
+
+        $middleware->handle($this->request);
+    }
+
     public function resolve(): void
     {
         $route = $this->request->getRoute();

@@ -14,7 +14,34 @@ class AuthController extends BaseController
 {
     public function signin(Request $request): void
     {
-        return;
+        $data = $request->getBody();
+
+        if (empty($data)) {
+            $this->failedResponse('Ошибка валидации', 422);
+        }
+
+        if (!isset($data['username'], $data['password'])) {
+            $this->failedResponse('Все поля должны быть заполнены', 422);
+        }
+
+        $model = new UserModel();
+
+        try {
+            $user = $model->getByUsername($data['username']);
+
+            $token = hash('sha256', $user->userId . $user->email . time());
+
+            (new TokenModel())->create(new CreateNewTokenDto(
+                userId: $user->userId,
+                token: $token
+            ));
+
+            $this->successResponse(['token' => $token]);
+        } catch (UserNotFoundException) {
+            $this->failedResponse('Пользователь не существует', 404);
+        } catch (Throwable $e) {
+            $this->failedResponse($e->getMessage());
+        }
     }
 
     public function signup(Request $request): void
@@ -52,7 +79,7 @@ class AuthController extends BaseController
             $user = $model->create(new CreateNewUserDto(
                 username: $data['username'],
                 email: $data['email'],
-                password: $data['password'],
+                password: password_hash($data['password'], PASSWORD_BCRYPT),
                 about: null,
                 photo: null,
             ));
