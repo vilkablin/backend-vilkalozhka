@@ -10,11 +10,11 @@ use Throwable;
 
 final class UserController extends BaseController
 {
-    public function getUserInformation(Request $request)
+    public function getUserInformation(Request $request): void
     {
-        $user = $this->validateAuthorizationToken($request);
-
         try {
+            $user = $this->validateAuthorizationToken($request);
+
             $commentsCount = (new CommentModel())->getCommentsCountByUserId($user->userId);
             $likesCount = (new LikeModel())->getLikesCountByUserId($user->userId);
             $recipeCount = (new RecipeModel())->getRecipesCountByUserId($user->userId);
@@ -36,23 +36,63 @@ final class UserController extends BaseController
 
             $this->successResponse($response);
         } catch (Throwable $e) {
-
+            $this->failedResponse($e->getMessage(), $e->getCode());
         }
     }
 
-    public function getAllUsers(): void
+    public function getAllUsers(Request $request): void
     {
-        $this->successResponse([
-            'users' => [
-                [
-                    'id' => 1,
-                    'full_name' => 'John Doe',
-                ],
-                [
-                    'id' => 2,
-                    'full_name' => 'John Doe',
-                ],
-            ]
-        ]);
+        try {
+            $params = $request->getQueryParams();
+
+            $currentPage = 1;
+
+            if (isset($params['current_page'])) {
+                $currentPage = (int)$params['current_page'];
+
+                if ($currentPage < 1) {
+                    $currentPage = 1;
+                }
+            }
+
+            $limit = 8;
+
+            if (isset($params['limit'])) {
+                $limit = (int)$params['limit'];
+
+                if ($limit < 1) {
+                    $limit = 8;
+                }
+            }
+
+            $offset = ($currentPage - 1) * $limit;
+
+            $items = (new RecipeModel())->getWithPaginate($offset, $limit);
+
+            $hasNextPage = false;
+
+            if (count($items) > $limit) {
+                array_pop($items);
+
+                $hasNextPage = true;
+            }
+
+            $mapped = [];
+
+            // TODO: add likes and comments
+            foreach ($items as $item) {
+                $mapped[] = [];
+            }
+
+            $responses = [
+                'items' => [],
+                'has_next_page' => $hasNextPage,
+                'current_page' => $currentPage,
+            ];
+
+            $this->successResponse($responses);
+        } catch (Throwable $e) {
+            $this->failedResponse($e->getMessage(), $e->getCode());
+        }
     }
 }

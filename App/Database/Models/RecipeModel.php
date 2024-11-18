@@ -22,7 +22,7 @@ final class RecipeModel extends BaseModel
         $userTable = (new UserModel())->getTable();
 
         $results = $this->executeQuery(
-            "SELECT r.id, r.title, r.description, r.cooking_time, r.complexity, r.number_of_servings, r.photo_path, r.user_id, u.username FROM $this->table r JOIN $userTable u ON u.id = r.user_id ORDER BY r.created_at DESC LIMIT :limit OFFSET :offset",
+            query: "SELECT r.id, r.title, r.description, r.cooking_time, r.complexity, r.number_of_servings, r.photo_path, r.user_id, u.username FROM $this->table r JOIN $userTable u ON u.id = r.user_id ORDER BY r.created_at DESC LIMIT :limit OFFSET :offset",
             params: [
                 ':limit' => $limit + 1,
                 ':offset' => $offset

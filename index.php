@@ -5,6 +5,7 @@ require_once 'autoload.php';
 use App\Core\Application;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\RecipeController;
+use App\Http\Controllers\UserController;
 use App\Http\Middleware\CorsMiddleware;
 
 $app = Application::getInstance();
@@ -21,5 +22,8 @@ $router->get('/api/recipes', [RecipeController::class, 'getRecipeByRecipeId']);
 $router->get('/api/recipes/all', [RecipeController::class, 'index']);
 $router->post('/api/recipes/create', [RecipeController::class, 'create']);
 $router->put('/api/recipes/update', [RecipeController::class, 'update']);
+
+$router->get('/api/users/all', [UserController::class, 'getAllUsers']);
+$router->get('/api/users/information', [UserController::class, 'getUserInformation']);
 
 $router->resolve();

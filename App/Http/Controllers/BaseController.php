@@ -5,11 +5,19 @@ namespace App\Http\Controllers;
 use App\Database\Models\AccessTokenModel;
 use App\Database\Models\UserModel;
 use App\Domain\Entity\UserEntity;
+use App\Exceptions\System\DatabaseQueryException;
+use App\Exceptions\Tokens\AccessTokenNotFoundException;
+use App\Exceptions\User\UserNotFoundException;
 use App\Http\Router\Request;
-use Throwable;
+use JetBrains\PhpStorm\NoReturn;
 
 class BaseController
 {
+    /**
+     * @throws AccessTokenNotFoundException
+     * @throws UserNotFoundException
+     * @throws DatabaseQueryException
+     */
     protected function validateAuthorizationToken(Request $request): UserEntity
     {
         $headers = $request->getAllHeaders();
@@ -20,16 +28,12 @@ class BaseController
 
         $token = $headers['Authorization'];
 
-        try {
-            $accessToken = (new AccessTokenModel())->getByToken($token);
+        $accessToken = (new AccessTokenModel())->getByToken($token);
 
-            return (new UserModel())->getById($accessToken->userId);
-        } catch (Throwable $exception) {
-            $this->failedResponse($exception->getMessage(), $exception->getCode());
-        }
+        return (new UserModel())->getById($accessToken->userId);
     }
 
-    public function successResponse(array $data, int $statusCode = 200): void
+    #[NoReturn] public function successResponse(array $data, int $statusCode = 200): void
     {
         $response = [
             'data' => $data,
@@ -46,7 +50,7 @@ class BaseController
         die();
     }
 
-    public function failedResponse(string $message, int $statusCode = 500, ?array $data = null): void
+    #[NoReturn] public function failedResponse(string $message, int $statusCode = 500, ?array $data = null): void
     {
         $response = [
             'data' => $data,
