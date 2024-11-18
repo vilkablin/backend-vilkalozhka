@@ -2,8 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Router\Request;
+
 class BaseController
 {
+    protected function validateAuthorizationToken(Request $request)
+    {
+
+    }
+
     public function successResponse(array $data, int $statusCode = 200): void
     {
         $response = [

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Database\Models\TokenModel;
+use App\Database\Models\AccessTokenModel;
 use App\Database\Models\UserModel;
 use App\DataTransferObjects\Token\CreateNewTokenDto;
 use App\DataTransferObjects\User\CreateNewUserDto;
@@ -10,8 +10,34 @@ use App\Exceptions\User\UserNotFoundException;
 use App\Http\Router\Request;
 use Throwable;
 
-class AuthController extends BaseController
+final class AuthController extends BaseController
 {
+    /**
+     * @param Request $request
+     */
+    public function logout(Request $request): void
+    {
+        $headers = $request->getAllHeaders();
+
+        if (!isset($headers['Authorization'])) {
+            $this->failedResponse('Токен не был передан', 422);
+        }
+
+        $token = $headers['Authorization'];
+
+        $accessToken = new AccessTokenModel();
+
+        try {
+            if ($accessToken->deleteByToken($token)) {
+                $this->successResponse([], 204);
+            }
+
+            $this->failedResponse('Ошибка удаления токена', 400);
+        } catch (Throwable $e) {
+            $this->failedResponse($e->getMessage());
+        }
+    }
+
     public function signin(Request $request): void
     {
         $data = $request->getBody();
@@ -31,7 +57,7 @@ class AuthController extends BaseController
 
             $token = hash('sha256', $user->userId . $user->email . time());
 
-            (new TokenModel())->create(new CreateNewTokenDto(
+            (new AccessTokenModel())->create(new CreateNewTokenDto(
                 userId: $user->userId,
                 token: $token
             ));
@@ -46,6 +72,13 @@ class AuthController extends BaseController
 
     public function signup(Request $request): void
     {
+        $fields = [
+            'username' => 'имя пользователя',
+            'email' => 'электронная почта',
+            'password' => 'пароль',
+            'confirmed_password' => 'повторите пароль',
+        ];
+
         $data = $request->getBody();
 
         if (empty($data)) {
@@ -54,6 +87,14 @@ class AuthController extends BaseController
 
         if (!isset($data['username'], $data['email'], $data['password'], $data['confirmed_password'])) {
             $this->failedResponse('Все поля должны быть заполнены', 422);
+        }
+
+        foreach ($data as $key => $value) {
+            if (!empty(trim($value))) {
+                continue;
+            }
+
+            $this->failedResponse(sprintf('Поле %s не может быть пустым!', $fields[$key] ?? $key), 422);
         }
 
         if ($data['confirmed_password'] !== $data['password']) {
@@ -86,7 +127,7 @@ class AuthController extends BaseController
 
             $token = hash('sha256', $user->userId . $user->email . time());
 
-            (new TokenModel())->create(new CreateNewTokenDto(
+            (new AccessTokenModel())->create(new CreateNewTokenDto(
                 userId: $user->userId,
                 token: $token
             ));

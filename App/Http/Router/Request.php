@@ -47,6 +47,10 @@ class Request
             $mapped = array_merge($mapped, $_POST, json_decode(file_get_contents('php://input'), true));
         }
 
+        if ($this->getMethod() === self::GET) {
+            $mapped = array_merge($mapped, $_GET);
+        }
+
         return array_merge($mapped, $_FILES);
     }
 }
