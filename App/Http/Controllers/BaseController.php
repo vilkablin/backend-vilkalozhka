@@ -2,13 +2,31 @@
 
 namespace App\Http\Controllers;
 
+use App\Database\Models\AccessTokenModel;
+use App\Database\Models\UserModel;
+use App\Domain\Entity\UserEntity;
 use App\Http\Router\Request;
+use Throwable;
 
 class BaseController
 {
-    protected function validateAuthorizationToken(Request $request)
+    protected function validateAuthorizationToken(Request $request): UserEntity
     {
+        $headers = $request->getAllHeaders();
 
+        if (!isset($headers['Authorization'])) {
+            $this->failedResponse('Forbidden', 403);
+        }
+
+        $token = $headers['Authorization'];
+
+        try {
+            $accessToken = (new AccessTokenModel())->getByToken($token);
+
+            return (new UserModel())->getById($accessToken->userId);
+        } catch (Throwable $exception) {
+            $this->failedResponse($exception->getMessage(), $exception->getCode());
+        }
     }
 
     public function successResponse(array $data, int $statusCode = 200): void

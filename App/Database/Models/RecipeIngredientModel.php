@@ -9,6 +9,8 @@ use PDO;
 
 class RecipeIngredientModel
 {
+    private string $table = 'recipes';
+
     /**
      * @param int $recipeId
      * @return array

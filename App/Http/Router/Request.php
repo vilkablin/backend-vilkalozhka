@@ -2,6 +2,8 @@
 
 namespace App\Http\Router;
 
+use JsonException;
+
 class Request
 {
     const GET = 'GET';
@@ -39,18 +41,22 @@ class Request
         return getallheaders() ?? [];
     }
 
+    /**
+     * @throws JsonException
+     */
     public function getBody(): array
     {
         $mapped = [];
 
         if ($this->getMethod() === self::POST) {
-            $mapped = array_merge($mapped, $_POST, json_decode(file_get_contents('php://input'), true));
-        }
-
-        if ($this->getMethod() === self::GET) {
-            $mapped = array_merge($mapped, $_GET);
+            $mapped = array_merge($mapped, $_POST, json_decode(file_get_contents('php://input'), true, 512, JSON_THROW_ON_ERROR));
         }
 
         return array_merge($mapped, $_FILES);
+    }
+
+    public function getQueryParams(): array
+    {
+        return $_GET ?? [];
     }
 }

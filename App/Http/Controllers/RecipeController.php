@@ -69,10 +69,10 @@ final class RecipeController extends BaseController
 
     }
 
-    public function index(Request $request)
+    public function index(Request $request): void
     {
         try {
-            $params = $request->getBody();
+            $params = $request->getQueryParams();
 
             $currentPage = 1;
 
@@ -146,7 +146,7 @@ final class RecipeController extends BaseController
      */
     public function getRecipeByRecipeId(Request $request): void
     {
-        $data = $request->getBody();
+        $data = $request->getQueryParams();
 
         if (empty($data)) {
             $this->failedResponse('Запись не найдена!', 404);

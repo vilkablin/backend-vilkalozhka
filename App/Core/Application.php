@@ -11,17 +11,12 @@ final class Application
     private static ?Application $instance = null;
     private Database $database;
     private Router $router;
-    private ExceptionHandler $exceptionHandler;
 
     private function __construct()
     {
         $this->database = new Database('root', '', 'vilka', 'localhost');
 
         $this->router = new Router(new Request());
-
-//        $this->exceptionHandler = new ExceptionHandler();
-//
-//        $this->exceptionHandler->register();
     }
 
     public static function getInstance(): Application

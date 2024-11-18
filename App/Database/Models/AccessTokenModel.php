@@ -4,11 +4,15 @@ namespace App\Database\Models;
 
 use App\Core\Application;
 use App\DataTransferObjects\Token\CreateNewTokenDto;
+use App\Domain\Entity\TokenEntity;
 use App\Exceptions\System\DatabaseQueryException;
+use App\Exceptions\Tokens\AccessTokenNotFoundException;
 use PDO;
 
 class AccessTokenModel
 {
+    private string $table = 'access_tokens';
+
     /**
      * @throws DatabaseQueryException
      */
@@ -16,7 +20,7 @@ class AccessTokenModel
     {
         $database = Application::getInstance()->getDatabase()->getConnection();
 
-        $statement = $database->prepare("INSERT INTO access_tokens (user_id, token) VALUES (:user_id, :token)");
+        $statement = $database->prepare("INSERT INTO $this->table (user_id, token) VALUES (:user_id, :token)");
 
         $statement->bindParam(":user_id", $params->userId);
         $statement->bindParam(":token", $params->token);
@@ -29,13 +33,43 @@ class AccessTokenModel
     }
 
     /**
+     * @throws AccessTokenNotFoundException
+     * @throws DatabaseQueryException
+     */
+    public function getByToken(string $token): TokenEntity
+    {
+        $database = Application::getInstance()->getDatabase()->getConnection();
+
+        $statement = $database->prepare("SELECT * FROM $this->table WHERE token = :token LIMIT 1");
+
+        $statement->bindParam(":token", $token);
+
+        if (!$statement->execute()) {
+            throw new DatabaseQueryException();
+        }
+
+        $results = $statement->fetch(PDO::FETCH_ASSOC);
+
+        if (empty($results)) {
+            throw new AccessTokenNotFoundException();
+        }
+
+        return new TokenEntity(
+            tokenId: $results['id'],
+            token: $results['token'],
+            userId: $results['user_id'],
+            createdAt: $results['created_at'],
+        );
+    }
+
+    /**
      * @throws DatabaseQueryException
      */
     public function deleteByToken(string $accessToken): bool
     {
         $database = Application::getInstance()->getDatabase()->getConnection();
 
-        $statement = $database->prepare("DELETE FROM access_tokens WHERE token = :token");
+        $statement = $database->prepare("DELETE FROM $this->table WHERE token = :token");
 
         $statement->bindParam(":token", $accessToken);
 
@@ -57,7 +91,7 @@ class AccessTokenModel
     {
         $database = Application::getInstance()->getDatabase()->getConnection();
 
-        $statement = $database->prepare("SELECT EXISTS(SELECT 1 FROM access_tokens WHERE token = :token) AS record_exists");
+        $statement = $database->prepare("SELECT EXISTS(SELECT 1 FROM $this->table WHERE token = :token) AS record_exists");
 
         $statement->bindParam(":token", $accessToken);
 
@@ -79,7 +113,7 @@ class AccessTokenModel
     {
         $database = Application::getInstance()->getDatabase()->getConnection();
 
-        $statement = $database->prepare("SELECT EXISTS(SELECT 1 FROM access_tokens WHERE user_id = :user_id) AS record_exists");
+        $statement = $database->prepare("SELECT EXISTS(SELECT 1 FROM $this->table WHERE user_id = :user_id) AS record_exists");
 
         $statement->bindParam(":user_id", $userId, PDO::PARAM_INT);
 

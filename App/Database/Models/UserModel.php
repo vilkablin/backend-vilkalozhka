@@ -2,45 +2,32 @@
 
 namespace App\Database\Models;
 
-use App\Core\Application;
 use App\DataTransferObjects\User\CreateNewUserDto;
 use App\Domain\Entity\UserEntity;
 use App\Exceptions\System\DatabaseQueryException;
 use App\Exceptions\User\UserNotFoundException;
-use PDO;
 
-class UserModel
+class UserModel extends BaseModel
 {
+    private string $table = 'users';
+
     /**
-     * @throws DatabaseQueryException
      * @throws UserNotFoundException
+     * @throws DatabaseQueryException
      */
     public function getById(int $id): UserEntity
     {
-        $database = Application::getInstance()->getDatabase()->getConnection();
+        $result = $this->executeQuery(
+            query: "SELECT * FROM $this->table WHERE id = :id",
+            params: [':id' => $id],
+            fetchSingle: true
+        );
 
-        $statement = $database->prepare("SELECT * FROM users WHERE id = :id");
-
-        $statement->bindParam(":id", $id);
-
-        if (!$statement->execute()) {
-            throw new DatabaseQueryException();
-        }
-
-        $result = $statement->fetch(PDO::FETCH_ASSOC);
-
-        if (!is_array($result)) {
+        if (!$result) {
             throw new UserNotFoundException();
         }
 
-        return new UserEntity(
-            userId: $result["id"],
-            username: $result["username"],
-            email: $result["email"],
-            password: $result["password"],
-            about: $result["about"],
-            photoPath: $result["photo_path"],
-        );
+        return $this->mapToEntity($result);
     }
 
     /**
@@ -49,121 +36,50 @@ class UserModel
      */
     public function getByEmail(string $email): UserEntity
     {
-        $database = Application::getInstance()->getDatabase()->getConnection();
+        $result = $this->executeQuery(
+            query: "SELECT * FROM $this->table WHERE email = :email",
+            params: [':email' => $email],
+            fetchSingle: true
+        );
 
-        $statement = $database->prepare("SELECT * FROM users WHERE email = :email");
-
-        $statement->bindParam(":email", $email);
-
-        if (!$statement->execute()) {
-            throw new DatabaseQueryException();
-        }
-
-        $result = $statement->fetch(PDO::FETCH_ASSOC);
-
-        if (!is_array($result)) {
+        if (!$result) {
             throw new UserNotFoundException();
         }
 
-        return new UserEntity(
-            userId: $result["id"],
-            username: $result["username"],
-            email: $result["email"],
-            password: $result["password"],
-            about: $result["about"],
-            photoPath: $result["photo_path"],
-        );
+        return $this->mapToEntity($result);
     }
 
     /**
      * @throws UserNotFoundException
      * @throws DatabaseQueryException
-     */
-    public function getByUsername(string $username): UserEntity
-    {
-        $database = Application::getInstance()->getDatabase()->getConnection();
-
-        $statement = $database->prepare("SELECT * FROM users WHERE username = :username");
-
-        $statement->bindParam(":username", $username);
-
-        if (!$statement->execute()) {
-            throw new DatabaseQueryException();
-        }
-
-        $result = $statement->fetch(PDO::FETCH_ASSOC);
-
-        if (!is_array($result)) {
-            throw new UserNotFoundException();
-        }
-
-        return new UserEntity(
-            userId: $result["id"],
-            username: $result["username"],
-            email: $result["email"],
-            password: $result["password"],
-            about: $result["about"],
-            photoPath: $result["photo_path"],
-        );
-    }
-
-    /**
-     * @throws UserNotFoundException
-     * @throws DatabaseQueryException
-     */
-    public function getUserByUsernameOrEmail(string $username, string $email): UserEntity
-    {
-        $database = Application::getInstance()->getDatabase()->getConnection();
-
-        $statement = $database->prepare("SELECT * FROM `users` WHERE `email` = :email OR `username` = :username");
-
-        $statement->bindParam(":email", $email);
-        $statement->bindParam(":username", $username);
-
-        if (!$statement->execute()) {
-            throw new DatabaseQueryException();
-        }
-
-        $result = $statement->fetch(PDO::FETCH_ASSOC);
-
-        if (!is_array($result)) {
-            throw new UserNotFoundException();
-        }
-
-        return new UserEntity(
-            userId: $result["id"],
-            username: $result["username"],
-            email: $result["email"],
-            password: $result["password"],
-            about: $result["about"],
-            photoPath: $result["photo_path"],
-        );
-    }
-
-    /**
-     * @param CreateNewUserDto $params
-     * @return UserEntity
-     * @throws DatabaseQueryException
-     * @throws UserNotFoundException
      */
     public function create(CreateNewUserDto $params): UserEntity
     {
-        $database = Application::getInstance()->getDatabase()->getConnection();
-
-        $statement = $database->prepare("INSERT INTO users (username, email, password, about, photo_path) VALUES (:username, :email, :password, :about, :photo_path)");
-
-        $statement->bindParam(":username", $params->username);
-        $statement->bindParam(":email", $params->email);
-        $statement->bindParam(":password", $params->password);
-        $statement->bindParam(":about", $params->about);
-        $statement->bindParam(":photo_path", $params->photo);
-
-        if (!$statement->execute()) {
-            throw new DatabaseQueryException();
-        }
-
-        $userId = $database->lastInsertId();
+        $userId = $this->insert($this->table, [
+            'username' => $params->username,
+            'email' => $params->email,
+            'password' => $params->password,
+            'about' => $params->about,
+            'photo_path' => $params->photo,
+        ]);
 
         return $this->getById($userId);
+    }
+
+    private function mapToEntity(array $data): UserEntity
+    {
+        return new UserEntity(
+            userId: $data['id'],
+            username: $data['username'],
+            email: $data['email'],
+            password: $data['password'],
+            about: $data['about'],
+            photoPath: $data['photo_path'],
+        );
+    }
+
+    public function getTable()
+    {
+        return $this->table;
     }
 }

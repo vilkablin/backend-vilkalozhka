@@ -9,6 +9,8 @@ use PDO;
 
 class RecipeCategoryModel
 {
+    private string $table = 'recipes';
+
     /**
      * @throws DatabaseQueryException
      */

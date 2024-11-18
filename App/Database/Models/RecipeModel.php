@@ -2,15 +2,15 @@
 
 namespace App\Database\Models;
 
-use App\Core\Application;
 use App\Domain\Entity\RecipeEntity;
 use App\Domain\Enums\RecipeComplexityEnum;
 use App\Exceptions\Recipe\RecipeNotFoundException;
 use App\Exceptions\System\DatabaseQueryException;
-use PDO;
 
-final class RecipeModel
+final class RecipeModel extends BaseModel
 {
+    private string $table = 'recipes';
+
     /**
      * @param int $offset
      * @param int $limit
@@ -19,42 +19,21 @@ final class RecipeModel
      */
     public function getWithPaginate(int $offset, int $limit): array
     {
-        $database = Application::getInstance()->getDatabase()->getConnection();
+        $userTable = (new UserModel())->getTable();
 
-        $statement = $database->prepare("SELECT r.id, r.title, r.description, r.cooking_time, r.complexity, r.number_of_servings, r.photo_path, r.user_id, u.username FROM recipes r JOIN users u ON u.id = r.user_id ORDER BY r.created_at DESC LIMIT :limit OFFSET :offset");
+        $results = $this->executeQuery(
+            "SELECT r.id, r.title, r.description, r.cooking_time, r.complexity, r.number_of_servings, r.photo_path, r.user_id, u.username FROM $this->table r JOIN $userTable u ON u.id = r.user_id ORDER BY r.created_at DESC LIMIT :limit OFFSET :offset",
+            params: [
+                ':limit' => $limit + 1,
+                ':offset' => $offset
+            ],
+        );
 
-        $newLimit = $limit + 1;
-
-        $statement->bindParam(':limit', $newLimit, PDO::PARAM_INT);
-        $statement->bindParam(':offset', $offset, PDO::PARAM_INT);
-
-        if (!$statement->execute()) {
-            throw new DatabaseQueryException();
-        }
-
-        $result = $statement->fetchAll(PDO::FETCH_ASSOC);
-
-        if (empty($result)) {
+        if (empty($results)) {
             return [];
         }
 
-        $mapped = [];
-
-        foreach ($result as $recipe) {
-            $mapped[] = new RecipeEntity(
-                recipeId: $recipe["id"],
-                title: $recipe["title"],
-                description: $recipe["description"],
-                cookingTimeInMinutes: (int)$recipe["cooking_time"],
-                complexity: RecipeComplexityEnum::from($recipe["complexity"]),
-                numberOfServings: (int)$recipe["number_of_servings"],
-                photoPath: $recipe["photo_path"] ?? null,
-                userId: $recipe["user_id"],
-                username: $recipe['username'],
-            );
-        }
-
-        return $mapped;
+        return array_map(fn(array $item) => $this->mapToEntity($item), $results);
     }
 
     /**
@@ -63,32 +42,44 @@ final class RecipeModel
      */
     public function getRecipeByRecipeId(int $recipeId): RecipeEntity
     {
-        $database = Application::getInstance()->getDatabase()->getConnection();
+        $userTable = (new UserModel())->getTable();
 
-        $statement = $database->prepare("SELECT r.id, r.title, r.description, r.cooking_time, r.complexity, r.number_of_servings, r.photo_path, r.user_id, u.username FROM recipes r JOIN users u ON u.id = r.user_id WHERE r.id = :recipe_id");
+        $results = $this->executeQuery(
+            query: "SELECT r.id, r.title, r.description, r.cooking_time, r.complexity, r.number_of_servings, r.photo_path, r.user_id, u.username FROM $this->table r JOIN $userTable u ON u.id = r.user_id WHERE r.id = :recipe_id",
+            params: [':recipe_id' => $recipeId],
+            fetchSingle: true,
+        );
 
-        $statement->bindValue(':recipe_id', $recipeId);
-
-        if (!$statement->execute()) {
-            throw new DatabaseQueryException();
-        }
-
-        $result = $statement->fetch(PDO::FETCH_ASSOC);
-
-        if (empty($result)) {
+        if (is_null($results)) {
             throw new RecipeNotFoundException();
         }
 
+        return $this->mapToEntity($results);
+    }
+
+    public function getRecipesCountByUserId(int $userId)
+    {
+        $results = $this->executeQuery(
+            query: "SELECT COUNT(*) as count FROM $this->table WHERE user_id = :user_id",
+            params: [":user_id" => $userId],
+            fetchSingle: true,
+        );
+
+        return $results["count"] ?? 0;
+    }
+
+    private function mapToEntity(array $data): RecipeEntity
+    {
         return new RecipeEntity(
-            recipeId: $result["id"],
-            title: $result["title"],
-            description: $result["description"],
-            cookingTimeInMinutes: (int)$result["cooking_time"],
-            complexity: RecipeComplexityEnum::from($result["complexity"]),
-            numberOfServings: (int)$result["number_of_servings"],
-            photoPath: $result["photo_path"] ?? null,
-            userId: $result["user_id"],
-            username: $result['username'],
+            recipeId: $data["id"],
+            title: $data["title"],
+            description: $data["description"],
+            cookingTimeInMinutes: (int)$data["cooking_time"],
+            complexity: RecipeComplexityEnum::from($data["complexity"]),
+            numberOfServings: (int)$data["number_of_servings"],
+            photoPath: $data["photo_path"] ?? null,
+            userId: $data["user_id"],
+            username: $data['username'],
         );
     }
 }
